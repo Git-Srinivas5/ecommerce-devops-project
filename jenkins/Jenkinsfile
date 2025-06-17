@@ -2,9 +2,10 @@ pipeline {
     agent any
     tools{
        maven 'maven123'
-    environment {
-        IMAGE_NAME = "ecommerce-app"
-        DOCKER_REGISTRY = "docker.io/srinivasabv"
+         }
+       environment {
+        IMAGE_NAME = "ecommerce-app"           // ✅ Your DockerHub repo name
+        DOCKER_CREDENTIALS_ID = "ae01a98c-daad-47ab-be7b-500b88edd30b"  // ✅ From your Jenkins credenti        GIT_CREDENTIALS_ID = "04ce9bce-f651-4f5f-9582-1fe650bd5127"     // ✅ Your GitHub credentials
     }
 
     stages {
