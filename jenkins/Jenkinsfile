@@ -1,17 +1,20 @@
 pipeline {
     agent any
-    tools{
-       maven 'maven123'
-         }
-       environment {
-        IMAGE_NAME = "ecommerce-app"           // ✅ Your DockerHub repo name
-        DOCKER_CREDENTIALS_ID = "ae01a98c-daad-47ab-be7b-500b88edd30b"  // ✅ From your Jenkins credenti        GIT_CREDENTIALS_ID = "04ce9bce-f651-4f5f-9582-1fe650bd5127"     // ✅ Your GitHub credentials
+
+    tools {
+        maven 'maven123'
+    }
+
+    environment {
+        IMAGE_NAME = "srinivasbv/ecommerce-app"   // ✅ Use full repo name for DockerHub
+        DOCKER_CREDENTIALS_ID = "52ba893f-55a0-4971-aa34-64c6dafef815" // ✅ Jenkins DockerHub credentials ID
+        GIT_CREDENTIALS_ID = "e878dd2c-30f3-4fc3-896e-f43dd988ad8a"     // ✅ GitHub credentials ID
     }
 
     stages {
         stage('Clone Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
+                git credentialsId: "${GIT_CREDENTIALS_ID}", branch: 'main', url: 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
             }
         }
 
@@ -26,31 +29,28 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}", "backend")
+                    dockerImage = docker.build("${IMAGE_NAME}", "backend")
                 }
             }
         }
 
-        // Optional stage: push to DockerHub or JFrog
-        /*
         stage('Push to DockerHub') {
             steps {
                 script {
-                    docker.withRegistry('', 'docker-hub-credentials-id') {
-                        docker.image("${IMAGE_NAME}").push('latest')
+                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDENTIALS_ID}") {
+                        dockerImage.push('latest')
                     }
                 }
             }
         }
-        */
     }
 
     post {
         success {
-            echo '✅ Build and Docker image successful!'
+            echo '✅ Build and Docker image pushed successfully!'
         }
         failure {
-            echo '❌ Build failed. Check logs.'
+            echo '❌ Pipeline failed. Please check the logs.'
         }
     }
 }
