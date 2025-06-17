@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "ecommerce-app"
+        DOCKER_REGISTRY = "docker.io/srinivasabv"
+    }
+
+    stages {
+        stage('Clone Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                dir('backend') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("${IMAGE_NAME}", "backend")
+                }
+            }
+        }
+
+        // Optional stage: push to DockerHub or JFrog
+        /*
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    docker.withRegistry('', 'docker-hub-credentials-id') {
+                        docker.image("${IMAGE_NAME}").push('latest')
+                    }
+                }
+            }
+        }
+        */
+    }
+
+    post {
+        success {
+            echo '✅ Build and Docker image successful!'
+        }
+        failure {
+            echo '❌ Build failed. Check logs.'
+        }
+    }
+}
+
