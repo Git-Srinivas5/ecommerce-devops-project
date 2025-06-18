@@ -58,4 +58,14 @@ pipeline {
       echo "Build failed. Check logs."
     }
   }
+  stage('Deploy to Kubernetes') {
+  steps {
+    script {
+      sh '''
+        aws eks --region $AWS_REGION update-kubeconfig --name your-cluster-name
+        kubectl apply -f k8s/deployment.yaml
+      '''
+    }
+  }
+}
 }
