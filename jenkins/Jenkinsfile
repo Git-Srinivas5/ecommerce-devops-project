@@ -47,6 +47,13 @@ pipeline {
                 docker push $IMAGE_URI
                 '''
             }
+            stage('Ansible Deploy') {
+    steps {
+        sh '''
+        ansible-playbook -i ~/inventory ~/setup.yml
+        '''
+    }
+}
         }
 
         stage('Deploy Container') {
