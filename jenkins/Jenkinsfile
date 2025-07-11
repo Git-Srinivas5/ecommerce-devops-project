@@ -4,43 +4,57 @@ pipeline {
     environment {
         AWS_REGION = 'ap-south-1'
         AWS_ACCOUNT_ID = '211218518678'
-        IMAGE_NAME = 'ecommerce-app'
+        ECR_REPO_NAME = 'ecommerce-app'
         IMAGE_TAG = 'v1'
-        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
+        IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
+                git url: 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                dir('backend') {
+                    sh 'mvn clean install'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    sh 'docker build -t $IMAGE_NAME .'
+                    sh 'docker build -t $ECR_REPO_NAME .'
                 }
-            }
-        }
-
-        stage('Tag Docker Image') {
-            steps {
-                sh 'docker tag $IMAGE_NAME:latest $ECR_URL:$IMAGE_TAG'
             }
         }
 
         stage('Login to ECR') {
             steps {
                 sh '''
-                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL
+                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                 '''
             }
         }
 
-        stage('Push to ECR') {
+        stage('Tag & Push to ECR') {
             steps {
-                sh 'docker push $ECR_URL:$IMAGE_TAG'
+                sh '''
+                docker tag $ECR_REPO_NAME:latest $IMAGE_URI
+                docker push $IMAGE_URI
+                '''
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                docker rm -f ecommerce || true
+                docker run -d -p 9090:8080 --name ecommerce $IMAGE_URI
+                '''
             }
         }
     }
