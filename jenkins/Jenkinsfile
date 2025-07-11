@@ -1,71 +1,47 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    AWS_REGION = 'us-east-1'
-    ECR_REPO = '211218518678.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app'
-    IMAGE_TAG = "ecommerce-${BUILD_NUMBER}"
-  }
-
-  stages {
-    stage('Checkout Code') {
-      steps {
-        git url: 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git', branch: 'main'
-      }
+    environment {
+        AWS_REGION = 'ap-south-1'
+        AWS_ACCOUNT_ID = '211218518678'
+        IMAGE_NAME = 'ecommerce-app'
+        IMAGE_TAG = 'v1'
+        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
     }
 
-    stage('Build Docker Image') {
-      steps {
-        script {
-          sh 'docker build -t $ECR_REPO:$IMAGE_TAG ./backend'
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Git-Srinivas5/ecommerce-devops-project.git'
+            }
         }
-      }
-    }
 
-    stage('Login to AWS ECR') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'ce044542-b7a7-4d1d-b404-cbace93c25aa',
-          usernameVariable: 'AWS_ACCESS_KEY_ID',
-          passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-        )]) {
-          script {
-            sh '''
-              aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-              aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-              aws configure set default.region $AWS_REGION
-              aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
-            '''
-          }
+        stage('Build Docker Image') {
+            steps {
+                dir('backend') {
+                    sh 'docker build -t $IMAGE_NAME .'
+                }
+            }
         }
-      }
-    }
 
-    stage('Push Docker Image') {
-      steps {
-        script {
-          sh 'docker push $ECR_REPO:$IMAGE_TAG'
+        stage('Tag Docker Image') {
+            steps {
+                sh 'docker tag $IMAGE_NAME:latest $ECR_URL:$IMAGE_TAG'
+            }
         }
-      }
-    }
-  }
 
-  post {
-    success {
-      echo "Docker image pushed: $ECR_REPO:$IMAGE_TAG"
+        stage('Login to ECR') {
+            steps {
+                sh '''
+                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL
+                '''
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh 'docker push $ECR_URL:$IMAGE_TAG'
+            }
+        }
     }
-    failure {
-      echo "Build failed. Check logs."
-    }
-  }
-  stage('Deploy to Kubernetes') {
-  steps {
-    script {
-      sh '''
-        aws eks --region $AWS_REGION update-kubeconfig --name your-cluster-name
-        kubectl apply -f k8s/deployment.yaml
-      '''
-    }
-  }
-}
 }
